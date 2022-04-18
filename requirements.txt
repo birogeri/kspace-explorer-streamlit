@@ -1,0 +1,4 @@
+streamlit>=1.8.1
+numpy>=1.14.3
+pydicom>=1.0.2
+Pillow>=5.1.0
