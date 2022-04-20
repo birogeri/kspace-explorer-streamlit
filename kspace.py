@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     menu_items={
         'Get Help': None,
-        'Report a bug': "https://github.com/birogeri/kspace-explorer/issues",
+        'Report a bug': "https://github.com/birogeri/kspace-explorer-streamlit/issues",
         'About': "# K-space Explorer\n"
                  "### Online Demo\n"
                  "K-space Explorer is a free and "
@@ -609,6 +609,22 @@ if __name__ == "__main__":
     image_change(state)
     img_box, kspace_box = st.columns(2)
 
+    if 'scan_percentage_disabled' not in state:
+        state.scan_percentage_disabled = False
+    if 'partial_fourier_disabled' not in state:
+        state.partial_fourier_disabled = False
+    # Set partial fourier and scan percentage disable each other when != 100
+    if 'partial_fourier_value' in state:
+        if state.partial_fourier_value != 100:
+            state.scan_percentage_disabled = True
+        else:
+            state.scan_percentage_disabled = False
+    if 'scan_percentage_value' in state:
+        if state.scan_percentage_value != 100:
+            state.partial_fourier_disabled = True
+        else:
+            state.partial_fourier_disabled = False
+
     # Sidebar elements
     st.sidebar.header('⚕️ K-space Explorer Online')
     st.sidebar.write('[https://kspace.app](https://k-space.app/)')
@@ -623,7 +639,8 @@ if __name__ == "__main__":
         partial_fourier = st.slider(
             'Partial Fourier',
             min_value=0, max_value=100, value=100,
-            key='partial_fourier_value')
+            key='partial_fourier_value',
+            disabled=state.partial_fourier_disabled)
 
         zero_fill = st.checkbox(
             'Zero-Fill',
@@ -642,7 +659,8 @@ if __name__ == "__main__":
         scan_percentage = st.slider(
             'Scan Percentage',
             min_value=0, max_value=100, value=100,
-            key='scan_percentage_value')
+            key='scan_percentage_value',
+            disabled=state.scan_percentage_disabled)
 
         st.write('----------')
 
