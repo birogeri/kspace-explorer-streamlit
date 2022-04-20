@@ -4,7 +4,7 @@
 effects of various modifications on the resulting image after an inverse
 Fourier transform.**
 
-To start the app, 
+**[Follow this link to run the online version (hosted on Streamlit cloud)](https://share.streamlit.io/birogeri/kspace-explorer-streamlit/kspace.py)**
 
 ![Demo](docs/demo.gif)
 
