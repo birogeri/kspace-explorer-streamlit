@@ -37,7 +37,7 @@ If you find it useful please consider [buying me a coffee with PayPal](https://w
 
 ## **Installation**
 
-To try the online version of K-space Explorer, you do not need to install anything.*
+To try the online version of K-space Explorer, you do not need to install anything.
 [There is a hosted version on Streamlit Cloud.](https://share.streamlit.io/birogeri/kspace-explorer-streamlit/kspace.py)
 ---
 
