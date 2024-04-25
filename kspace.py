@@ -2,6 +2,7 @@ import streamlit as st
 import PIL
 import numpy as np
 import pydicom
+import io
 from PIL import Image
 
 st.set_page_config(
@@ -29,7 +30,7 @@ fftshift = np.fft.fftshift
 ifftshift = np.fft.ifftshift
 
 
-@st.cache
+@st.cache_data
 def open_file(file, dtype: np.dtype = np.float32) -> np.ndarray:
     """Tries to load image data into a NumPy ndarray
 
@@ -55,8 +56,15 @@ def open_file(file, dtype: np.dtype = np.float32) -> np.ndarray:
             st.exception(e)
     except PIL.UnidentifiedImageError:
         try:
-            with pydicom.dcmread(file) as dcm_file:
-                img_pixel_array = dcm_file.pixel_array.astype(dtype)
+            if isinstance(file, io.BytesIO):
+                # when the file object is an uploaded file (presumably DICOM)
+                file.seek(0)
+                with pydicom.dcmread(file) as dcm_file:
+                    img_pixel_array = dcm_file.pixel_array.astype(dtype)
+            else:
+                # when the file object is a string (most commonly the default file)
+                with pydicom.dcmread(file) as dcm_file:
+                    img_pixel_array = dcm_file.pixel_array.astype(dtype)
             img_pixel_array.setflags(write=True)
             return img_pixel_array
         except Exception as e:
