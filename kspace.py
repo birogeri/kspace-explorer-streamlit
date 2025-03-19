@@ -2,6 +2,7 @@ import streamlit as st
 import PIL
 import numpy as np
 import pydicom
+from pydicom import errors
 import io
 from PIL import Image
 
@@ -31,7 +32,7 @@ ifftshift = np.fft.ifftshift
 
 
 @st.cache_data
-def open_file(file, dtype: np.dtype = np.float32) -> np.ndarray:
+def open_file(file, dtype: np.dtype = np.float32) -> np.ndarray | None:
     """Tries to load image data into a NumPy ndarray
 
     The function first tries to use the PIL Image library to identify and load
@@ -68,7 +69,7 @@ def open_file(file, dtype: np.dtype = np.float32) -> np.ndarray:
             img_pixel_array.setflags(write=True)
             return img_pixel_array
         except Exception as e:
-            st.exception(e)
+            raise e
 
 
 class ImageManipulators:
@@ -610,8 +611,10 @@ if __name__ == "__main__":
 
     try:
         im = ImageManipulators(open_file(file_to_open))
-    except Exception as err:
-        st.exception(err)
+    except pydicom.errors.InvalidDicomError as err:
+
+        st.warning(f'Image could not be opened: {err}', icon=':material/warning:')
+        st.info('Loaded default image', icon=':material/info:')
         im = ImageManipulators(open_file(default_file))
 
     image_change(state)
@@ -636,31 +639,35 @@ if __name__ == "__main__":
     # Sidebar elements
     st.sidebar.header('⚕️ K-space Explorer Online')
     st.sidebar.write('[https://kspace.app](https://k-space.app/)')
-    with st.sidebar.expander("View custom image"):
+    st.sidebar.write('An educational tool to get hands-on experience with the k-space and the effects of various modifications on the resulting image after an inverse Fourier transform.')
+    st.sidebar.write('Feedback: :material/mail: hello@k-space.online')
+    with st.sidebar.expander("Load custom image", icon=':material/upload_file:'):
         uploader = st.file_uploader(
             'Upload a file',
             key='uploaded_image',
         )
 
-    with st.sidebar.expander("Modify K-space"):
-        st.write('----------')
+    with st.sidebar.expander("Modify K-space", icon=':material/tune:'):
         partial_fourier = st.slider(
             'Partial Fourier',
             min_value=0, max_value=100, value=100,
             key='partial_fourier_value',
-            disabled=state.partial_fourier_disabled)
+            disabled=state.partial_fourier_disabled,
+            help='Reducing the scan time by scanning fewer lines of the k-space in phase direction. The remaining lines are either filled with zeroes or using a property of the k-space called conjugate symmetry. This means that in theory, k-space quadrants are symmetric i.e. a point in the top left corner equals the one in the bottom right corner (with the opposite sign of the imaginary part of the complex value.)')
 
         zero_fill = st.checkbox(
             'Zero-Fill',
             value=True,
-            key='zero_fill_value')
+            key='zero_fill_value',
+            help='If set to ON - lines not acquired are filled with zeroes. If set to OFF - k-space symmetry is used to fill the lines.')
 
         st.write('----------')
 
         noise = st.slider(
             'Signal to Noise (dB)',
             min_value=-30, max_value=30, value=30,
-            key='noise_value')
+            key='noise_value',
+            help='Image noise is a random granular pattern in the detected signal. It does not add value to the image due to its randomness. Noise can originate from the examined body itself (random thermal motion of atoms) or the electronic equipment used to detect signals. The signal-to-noise ratio is used to describe the relation between the useful signal and the random noise. This slider adds noise to the image to simulate the new signal-to-noise ratio SNR[dB]=20log₁₀(𝑆/𝑁) where 𝑆 is the mean signal and 𝑁 is the standard deviation of the noise.')
 
         st.write('----------')
 
@@ -668,28 +675,32 @@ if __name__ == "__main__":
             'Scan Percentage',
             min_value=0, max_value=100, value=100,
             key='scan_percentage_value',
-            disabled=state.scan_percentage_disabled)
+            disabled=state.scan_percentage_disabled,
+            help='Scan percentage is a k-space shutter which skips certain number of lines at the edges in phase encoding direction. This parameter is only available on certain manufacturers\' scanners.')
 
         st.write('----------')
 
         high_pass_filter = st.slider(
             'High Pass Filter',
             min_value=0, max_value=100, value=0,
-            key='high_pass_value')
+            key='high_pass_value',
+            help='The high pass filter keeps only the periphery of the k-space. The periphery contains the information about the details and edges in the image domain, while the overall contrast of the image is lost with the centre of the k-space.')
 
         st.write('----------')
 
         low_pass_filter = st.slider(
             'Low Pass Filter',
             min_value=0, max_value=100, value=100,
-            key='low_pass_value')
+            key='low_pass_value',
+            help='The low pass filter keeps only the centre of the k-space. The centre contains the overall contrast in image domain, while the details of the image are lost with the periphery of the k-space.')
 
         st.write('----------')
 
         undersample = st.slider(
             'Undersample k-space',
             min_value=1, max_value=16, value=1,
-            key='undersample_value')
+            key='undersample_value',
+            help='Simulates acquiring every 𝑛th (where 𝑛 is the acceleration factor) line of k-space, starting from the midline. Commonly used in the SENSE algorithm.')
 
         compress_check = st.checkbox(
             'Compress undersampled k-space',
@@ -698,11 +709,11 @@ if __name__ == "__main__":
         st.write('----------')
 
         k_scaling = st.slider(
-            'K_space scaling constant (10ⁿ)',
+            'K-space scaling constant (10ⁿ)',
             min_value=-10, max_value=10, value=-3,
             key='k_scaling_value')
 
-    with st.sidebar.expander("Image windowing tools"):
+    with st.sidebar.expander("Image windowing tools", icon=':material/settings_brightness:'):
         st.slider(
             'Window width',
             min_value=0.01, max_value=1., value=1., step=0.01,
@@ -716,5 +727,5 @@ if __name__ == "__main__":
     st.sidebar.caption('Created by Gergely Biro')
     st.sidebar.caption('Please consider a [small donation ☕](https://www.paypal.com/paypalme/birogeri/5gbp) if you find this app useful.')
 
-    img_box.image(im.image_display_data, use_column_width="always")
-    kspace_box.image(im.kspace_display_data, use_column_width="always")
+    img_box.image(im.image_display_data, use_container_width=True, output_format='PNG')
+    kspace_box.image(im.kspace_display_data, use_container_width=True, output_format='PNG')
